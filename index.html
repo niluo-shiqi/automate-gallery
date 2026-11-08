@@ -1,0 +1,280 @@
+<title>AutoMate Parts Gallery</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: filter bar over a dense card grid; clicking a card opens a side drawer with a live 3D view and the part's card */
+:root {
+  --bg: #f4f6f8; --sheet: #ffffff; --ink: #1c2530; --muted: #5d6877; --line: #d3d9e1;
+  --accent: #2f5fb3; --accent-soft: #e3ebf8;
+  --plug: #3f7fd9; --socket: #b4bbc5;
+  --ok: #2e7d4f; --ok-bg: #e2f2e8; --bad: #b3412f; --bad-bg: #f8e4df; --warn: #9a6408; --warn-bg: #fbf0d9;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12161c; --sheet: #1a2029; --ink: #e4e8ee; --muted: #9aa4b2; --line: #333d4b;
+  --accent: #7ea6ec; --accent-soft: #233552; --plug: #6aa0ee; --socket: #6f7884;
+  --ok: #7fcf9c; --ok-bg: #1d3427; --bad: #f09a88; --bad-bg: #3d221d; --warn: #e8b85c; --warn-bg: #3a2f17;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #12161c; --sheet: #1a2029; --ink: #e4e8ee; --muted: #9aa4b2; --line: #333d4b;
+  --accent: #7ea6ec; --accent-soft: #233552; --plug: #6aa0ee; --socket: #6f7884;
+  --ok: #7fcf9c; --ok-bg: #1d3427; --bad: #f09a88; --bad-bg: #3d221d; --warn: #e8b85c; --warn-bg: #3a2f17;
+  color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; line-height: 1.45; }
+.wrap { max-width: 1400px; margin: 0 auto; padding-block: 24px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 16px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 26px; margin: 0; }
+.sub { color: var(--muted); margin: 2px 0 0; max-width: 80ch; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: var(--sheet); border: 1px solid var(--line);
+  border-radius: 8px; padding-block: 10px; padding-left: 12px; padding-right: 12px; }
+.bar input[type=search], .bar select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 6px; padding: 6px 10px; }
+.bar input[type=search] { width: 150px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 500 12.5px var(--body); border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+  border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip .n { font-family: var(--mono); opacity: .75; margin-left: 4px; }
+label.tog { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); cursor: pointer; }
+.count { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.card { background: var(--sheet); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; cursor: pointer;
+  display: grid; grid-template-rows: auto 1fr; text-align: left; font: inherit; color: inherit; padding: 0; }
+.card:hover, .card:focus-visible { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px var(--accent-soft); }
+.thumb { aspect-ratio: 4 / 3; width: 100%; background: var(--bg); display: grid; place-items: center; color: var(--muted);
+  font-family: var(--mono); font-size: 11px; }
+.thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.info { padding: 8px 10px 10px; display: grid; gap: 5px; }
+.idrow { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.pid { font-family: var(--mono); font-weight: 500; font-size: 14px; }
+.cat { font-size: 12px; color: var(--muted); }
+.nums { font-family: var(--mono); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.b { font: 500 10.5px var(--mono); border-radius: 4px; padding: 1px 5px; background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+.b.ok { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+.b.bad { background: var(--bad-bg); color: var(--bad); border-color: transparent; }
+.b.warn { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+.b.acc { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
+/* drawer */
+.drawer { position: fixed; inset: 0 0 0 auto; width: min(560px, 100%); background: var(--sheet); border-left: 1px solid var(--line);
+  box-shadow: -12px 0 30px rgba(0,0,0,.12); display: grid; grid-template-rows: auto auto 1fr; z-index: 20;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.dhead { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--line); gap: 8px; }
+.dhead h2 { font-family: var(--display); font-size: 20px; margin: 0; }
+.dhead button, .viewctl button { font: inherit; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+.view { position: relative; height: 340px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.view canvas { display: block; width: 100%; height: 100%; }
+.viewctl { position: absolute; left: 10px; bottom: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  font-size: 12px; color: var(--muted); }
+.viewctl input[type=range] { width: 140px; }
+.dbody { overflow-y: auto; padding: 14px 16px 24px; display: grid; gap: 14px; align-content: start; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td:first-child { color: var(--muted); width: 42%; }
+td.m { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.sect { font: 600 11.5px var(--mono); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: -6px; }
+.note { font-size: 12.5px; color: var(--muted); margin: 0; }
+.empty { padding: 40px; text-align: center; color: var(--muted); }
+@media (max-width: 600px) { .view { height: 260px; } .count { margin-left: 0; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>AutoMate Parts Gallery</h1>
+    <p class="sub" id="sub">Loading parts…</p>
+  </header>
+  <div class="bar" role="toolbar" aria-label="Filters">
+    <input type="search" id="q" placeholder="Search id" aria-label="Search by part id">
+    <div class="chips" id="chips"></div>
+    <label class="tog"><input type="checkbox" id="origOnly"> Original five</label>
+    <label class="tog"><input type="checkbox" id="passOnly"> Onboarding passed</label>
+    <select id="sort" aria-label="Sort">
+      <option value="id">Sort: id</option>
+      <option value="clearance_mm">Sort: clearance</option>
+      <option value="depth_mm">Sort: depth</option>
+      <option value="plug_height_mm">Sort: plug height</option>
+    </select>
+    <span class="count" id="count"></span>
+  </div>
+  <div class="legend">
+    <span><span class="sw" style="background:var(--plug)"></span>held part (plug)</span>
+    <span><span class="sw" style="background:var(--socket)"></span>fixed part (socket)</span>
+    <span>Badges: onboarding result per version (v0 original five, v1 import, v2 revised); letters are the failed checks
+      a card, b physical mate, c reset, d reach/grasp, e card fields.</span>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<aside class="drawer" id="drawer" hidden aria-label="Part details">
+  <div class="dhead"><h2 id="dTitle"></h2><button id="dClose" type="button">Close</button></div>
+  <div class="view" id="view">
+    <div class="viewctl">
+      <label>Separate <input type="range" id="sep" min="0" max="1.2" step="0.01" value="0.6" aria-label="Separation"></label>
+      <button type="button" id="tPlug">Hide plug</button><button type="button" id="tSock">Hide socket</button>
+      <span>Drag to rotate, scroll to zoom</span>
+    </div>
+  </div>
+  <div class="dbody" id="dBody"></div>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let DATA = [], GROUPS = {}, filter = "all";
+
+function b64(s, type) { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new type(u.buffer); }
+function geom(m) {
+  const q = b64(m.pos, Uint16Array), pos = new Float32Array(q.length);
+  for (let i = 0; i < q.length; i++) { const k = i % 3; pos[i] = m.lo[k] + q[i] / 65535 * (m.hi[k] - m.lo[k]); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  g.setIndex(new THREE.BufferAttribute(m.idx32 ? b64(m.idx, Uint32Array) : b64(m.idx, Uint16Array), 1));
+  g.computeVertexNormals(); return g;
+}
+function partScene(p) {
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a93a0, 0.95));
+  const d = new THREE.DirectionalLight(0xffffff, 0.55); d.position.set(1, -1.5, 2); scene.add(d);
+  const mat = c => new THREE.MeshStandardMaterial({ color: new THREE.Color(c), roughness: 0.65, metalness: 0.05, side: THREE.DoubleSide });
+  const sock = new THREE.Mesh(geom(p.socket), mat(css("--socket"))), plug = new THREE.Mesh(geom(p.plug), mat(css("--plug")));
+  const grp = new THREE.Group(); grp.add(sock); grp.add(plug); grp.rotation.x = -Math.PI / 2; scene.add(grp);   // CAD Z-up -> view Y-up
+  const sh = p.socket.hi[2] - p.socket.lo[2], ph = p.plug.hi[2] - p.plug.lo[2];
+  return { scene, sock, plug, grp, sh, ph };
+}
+function frame(cam, s, sep) {
+  s.plug.position.z = sep * (s.sh * 0.6 + s.ph * 0.4);
+  const box = new THREE.Box3().setFromObject(s.grp), c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() / 2 || 1;
+  cam.position.set(c.x + r * 1.35, c.y + r * 0.9, c.z + r * 1.6); cam.near = r / 100; cam.far = r * 20; cam.lookAt(c); cam.updateProjectionMatrix();
+  return c;
+}
+
+/* thumbnails: one shared offscreen renderer */
+let thumbR = null;
+function thumb(p) {
+  if (!thumbR) { thumbR = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); thumbR.setSize(320, 240); thumbR.setPixelRatio(1); }
+  const s = partScene(p), cam = new THREE.PerspectiveCamera(30, 4 / 3, 0.001, 100);
+  frame(cam, s, 0.6); thumbR.render(s.scene, cam);
+  const url = thumbR.domElement.toDataURL("image/png");
+  s.scene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+  return url;
+}
+
+function fmt(x, d = 1) { return x == null ? "n/a" : (+x).toFixed(d); }
+function obBadges(p) {
+  const o = p.onboarding || {}, out = [];
+  for (const v of ["v0", "v1", "v2"]) if (o[v]) {
+    const r = o[v]; if (r.error) { out.push(`<span class="b warn">${v} ?</span>`); continue; }
+    out.push(r.pass ? `<span class="b ok">${v} pass</span>` : `<span class="b bad" title="${(r.reason || "").replace(/"/g, "'")}">${v} ${r.fails}</span>`);
+  }
+  return out.join("");
+}
+function flags(p) {
+  const f = [];
+  if (p.original) f.push(`<span class="b acc">original</span>`);
+  if (p.stepped) f.push(`<span class="b">stepped</span>`);
+  if (p.card_invalid) f.push(`<span class="b warn">card invalid</span>`);
+  if (p.zero_shot) f.push(`<span class="b warn">zero-shot ${p.zero_shot}</span>`);
+  if (p.ins3) f.push(`<span class="b ok">INS3 ${p.ins3}</span>`);
+  return f.join("");
+}
+function catKey(p) { return p.topology === "peg_into_hole" ? "peg" : p.topology === "sleeve_over_pin" ? "sleeve" : (p.group || "other"); }
+function passedAny(p) { const o = p.onboarding || {}; const last = o.v2 || o.v1 || o.v0; return !!(last && last.pass); }
+
+const thumbs = new Map();
+function render() {
+  const q = $("#q").value.trim(), so = $("#sort").value;
+  let rows = DATA.filter(p => (filter === "all" || catKey(p) === filter) && (!q || p.id.includes(q))
+    && (!$("#origOnly").checked || p.original) && (!$("#passOnly").checked || passedAny(p)));
+  rows.sort((a, b) => so === "id" ? a.id.localeCompare(b.id) : ((a[so] ?? 1e9) - (b[so] ?? 1e9)));
+  $("#count").textContent = `${rows.length} of ${DATA.length} parts`;
+  $("#grid").innerHTML = rows.length ? rows.map(p => `
+    <button class="card" type="button" data-id="${p.id}" aria-label="Part ${p.id}, ${p.category}">
+      <div class="thumb" id="t${p.id}">${thumbs.has(p.id) ? `<img alt="" src="${thumbs.get(p.id)}">` : "rendering…"}</div>
+      <div class="info">
+        <div class="idrow"><span class="pid">${p.id}</span><span class="cat">${p.category}</span></div>
+        <div class="nums">clear ${fmt(p.clearance_mm, 2)} mm · depth ${fmt(p.depth_mm, 0)} mm</div>
+        <div class="badges">${obBadges(p)}${flags(p)}</div>
+      </div>
+    </button>`).join("") : `<div class="empty">No parts match these filters.</div>`;
+}
+function chips() {
+  const counts = { all: DATA.length }; DATA.forEach(p => counts[catKey(p)] = (counts[catKey(p)] || 0) + 1);
+  const defs = [["all", "All"], ["peg", "Peg into hole"], ["sleeve", "Sleeve over pin"]]
+    .concat(Object.keys(GROUPS).sort().map(g => [g, `${g}: ${GROUPS[g]}`])).concat([["other", "Other"]]);
+  $("#chips").innerHTML = defs.filter(([k]) => counts[k]).map(([k, n]) =>
+    `<button class="chip" type="button" data-k="${k}" aria-pressed="${k === filter}">${n}<span class="n">${counts[k]}</span></button>`).join("");
+}
+
+/* detail drawer with a live view */
+let live = null;
+function openPart(id) {
+  const p = DATA.find(x => x.id === id); if (!p) return;
+  $("#drawer").hidden = false; $("#dTitle").textContent = `${p.id} · ${p.category}`;
+  const o = p.onboarding || {};
+  const obRows = ["v0", "v1", "v2"].filter(v => o[v]).map(v => {
+    const r = o[v]; return `<tr><td>Onboarding ${v}</td><td class="m">${r.error ? "unreadable" : r.pass ? "pass" : "fails " + r.fails}${r.seated ? ` · mate ${r.seated} seated` : ""}${r.reason ? `<br><span class="note">${r.reason}</span>` : ""}</td></tr>`;
+  }).join("") || `<tr><td>Onboarding</td><td>not run</td></tr>`;
+  $("#dBody").innerHTML = `
+    <div class="badges">${obBadges(p)}${flags(p)}</div>
+    <div class="sect">Measured card (assets.py)</div>
+    <table>
+      <tr><td>Topology</td><td class="m">${p.topology}</td></tr>
+      <tr><td>Clearance per side</td><td class="m">${fmt(p.clearance_mm, 2)} mm</td></tr>
+      <tr><td>Full insertion depth</td><td class="m">${fmt(p.depth_mm, 1)} mm</td></tr>
+      <tr><td>Plug height</td><td class="m">${fmt(p.plug_height_mm, 1)} mm</td></tr>
+      <tr><td>Plug radius (max)</td><td class="m">${fmt(p.plug_radius_mm, 1)} (${fmt(p.plug_radius_max_mm, 1)}) mm</td></tr>
+      <tr><td>Socket height</td><td class="m">${fmt(p.socket_height_mm, 1)} mm</td></tr>
+    </table>
+    <div class="sect">Status</div>
+    <table>${obRows}
+      ${p.zero_shot ? `<tr><td>INS3 expert, zero-shot</td><td class="m">${p.zero_shot}</td></tr>` : ""}
+      ${p.ins3 ? `<tr><td>INS3 expert (developed on)</td><td class="m">${p.ins3}</td></tr>` : ""}
+    </table>
+    <p class="note">Meshes are simplified for display (about ${p.plug.nf + p.socket.nf} triangles). Parts are stored in their assembled pose, so separation 0 shows them mated. ${p.card_invalid ? "This card has a physically implausible clearance or depth and is being re-measured." : ""}</p>`;
+  if (!live) {
+    const r = new THREE.WebGLRenderer({ antialias: true, alpha: true }); r.setPixelRatio(Math.min(2, devicePixelRatio));
+    $("#view").prepend(r.domElement);
+    const cam = new THREE.PerspectiveCamera(32, 1, 0.001, 100), ctl = new THREE.OrbitControls(cam, r.domElement);
+    ctl.enableDamping = true; live = { r, cam, ctl, s: null };
+    const loop = () => { if (!$("#drawer").hidden && live.s) { ctl.update(); r.render(live.s.scene, cam); } requestAnimationFrame(loop); };
+    loop();
+    new ResizeObserver(() => { const w = $("#view").clientWidth, h = $("#view").clientHeight; r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }).observe($("#view"));
+  }
+  if (live.s) live.s.scene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+  live.s = partScene(p); const c = frame(live.cam, live.s, +$("#sep").value); live.ctl.target.copy(c); live.ctl.update();
+  $("#tPlug").textContent = "Hide plug"; $("#tSock").textContent = "Hide socket";
+}
+
+document.addEventListener("click", e => {
+  const c = e.target.closest(".card"); if (c) return openPart(c.dataset.id);
+  const ch = e.target.closest(".chip"); if (ch) { filter = ch.dataset.k; chips(); render(); }
+});
+["#q", "#sort", "#origOnly", "#passOnly"].forEach(s => $(s).addEventListener("input", render));
+$("#dClose").onclick = () => { $("#drawer").hidden = true; };
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("#drawer").hidden = true; });
+$("#sep").addEventListener("input", () => { if (live && live.s) live.s.plug.position.z = +$("#sep").value * (live.s.sh * 0.6 + live.s.ph * 0.4); });
+$("#tPlug").onclick = () => { if (!live?.s) return; live.s.plug.visible = !live.s.plug.visible; $("#tPlug").textContent = live.s.plug.visible ? "Hide plug" : "Show plug"; };
+$("#tSock").onclick = () => { if (!live?.s) return; live.s.sock.visible = !live.s.sock.visible; $("#tSock").textContent = live.s.sock.visible ? "Hide socket" : "Show socket"; };
+
+fetch("gallery_data.json").then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => {
+  DATA = d.parts; GROUPS = d.groups || {};
+  const peg = DATA.filter(p => p.topology === "peg_into_hole").length, sl = DATA.filter(p => p.topology === "sleeve_over_pin").length;
+  $("#sub").textContent = `${DATA.length} two-part assemblies from AutoMate: ${peg} peg into hole, ${sl} sleeve over pin, ${DATA.length - peg - sl} other (grouped A to F by the import agent's characterization). Click a part for a 3D view and its measured card.`;
+  chips(); render();
+  let i = 0; const ids = DATA.map(p => p.id);
+  const step = () => { const t0 = performance.now();
+    while (i < ids.length && performance.now() - t0 < 30) { const p = DATA[i]; try { thumbs.set(p.id, thumb(p)); } catch (e) { thumbs.set(p.id, ""); }
+      const el = document.getElementById("t" + p.id); if (el) el.innerHTML = thumbs.get(p.id) ? `<img alt="" src="${thumbs.get(p.id)}">` : "no preview"; i++; }
+    if (i < ids.length) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}).catch(e => { $("#sub").textContent = "Could not load gallery_data.json (" + e.message + ")."; });
+</script>
